@@ -1,0 +1,71 @@
+---
+title: "Ch9_WH_SVM"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+```
+
+## Chapter 9, SVM
+
+In this problem, you will use simulation to evaluate (by Monte Carlo) the expected misclassification error rate given a particular generating model.
+
+Let yi be equally divided between classes 0 and 1, and let xi???R10 be normally distributed.
+
+Given yi=0, xi???N10(0,I10).  Given yi=1, xi???N10(??,I10) with ??=(1,1,1,1,1,0,0,0,0,0).
+
+Now, we would like to know the expected test error rate if we fit an SVM to a sample of 50 random training points from class 1 and 50 more from class 0.  We can calculate this to high precision by 1) generating a random training sample to train on, 2) evaluating the number of mistakes we make on a large test set, and then 3) repeating (1-2) many times and averaging the error rate for each trial.
+
+Aside: in real life don't know the generating distribution, so we have to use resampling methods instead of the procedure described above.
+
+For all of the following, please enter your error rate as a number between zero and 1 (e.g., 0.21 instead of 21 if the error rate is 21%).
+
+
+```{r}
+
+# The package for the mvrnorm() function
+install.packages("MASS")
+library(MASS)
+
+# The package for the svm function
+install.packages("e1071")
+library(e1071)
+
+#Create diagonal matrix
+diag0 = diag(10)
+dim(diag0)
+
+# Let us use the same seed as in the lecture
+set.seed(10111)
+
+# Generate xi (50 random points for class 1 and 50 random points for class 0)
+mu0 = rep(0, 10)
+length(mu0)
+mu0
+
+x0 = mvrnorm(50, mu = mu0, Sigma = diag0)
+dim(x0)
+
+mu1 = c(rep(1, 5), rep(0, 5))
+mu1
+
+x1 = mvrnorm(50, mu = mu1, Sigma = diag(10))
+dim(x1)
+
+x_train = rbind(x0, x1)
+dim(x_train)
+
+#Make vector of 100 observations, with 50 1-s and 50 0-s
+y_train = as.factor(c(rep(0, 50), rep(1, 50)))
+class(y_train)
+y_train
+length(y_train)
+
+#Combine x and y variables to create the training data set
+train = data.frame(x_train, y = y_train)
+dim(train)
+
+class(x)
+```
