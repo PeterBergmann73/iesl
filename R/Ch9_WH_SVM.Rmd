@@ -7,15 +7,26 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Summary
+
+This is the R-assignment. The name of the file is misspelling of "HW" - "HomeWork".
+
 ## Chapter 9, SVM
 
 In this problem, you will use simulation to evaluate (by Monte Carlo) the expected misclassification error rate given a particular generating model.
 
-Let yi be equally divided between classes 0 and 1, and let xi???R10 be normally distributed.
+Let yi be equally divided between classes 0 and 1, and let $$x_i\in R10$$
 
-Given yi=0, xi???N10(0,I10).  Given yi=1, xi???N10(??,I10) with ??=(1,1,1,1,1,0,0,0,0,0).
+be normally distributed.
 
-Now, we would like to know the expected test error rate if we fit an SVM to a sample of 50 random training points from class 1 and 50 more from class 0.  We can calculate this to high precision by 1) generating a random training sample to train on, 2) evaluating the number of mistakes we make on a large test set, and then 3) repeating (1-2) many times and averaging the error rate for each trial.
+Given $$y_i=0$$, $$x_i\sim N_{10}(0,I_{10})$$.
+Given $$y_i=1$$, $$x_i\sim N_{10}(\mu,I_{10})$$ with $$\mu=(1,1,1,1,1,0,0,0,0,0)$$.
+
+Now, we would like to know the expected test error rate if we fit an SVM to a sample of 50 random training points from class 1 and 50 more from class 0.  We can calculate this to high precision by
+
+1) generating a random training sample to train on,
+2) evaluating the number of mistakes we make on a large test set, and then
+3) repeating (1-2) many times and averaging the error rate for each trial.
 
 Aside: in real life don't know the generating distribution, so we have to use resampling methods instead of the procedure described above.
 
@@ -26,45 +37,152 @@ For all of the following, please enter your error rate as a number between zero 
 
 # The package for the mvrnorm() function
 install.packages("MASS")
-library(MASS)
 
 # The package for the svm function
 install.packages("e1071")
+
+library(MASS)
 library(e1071)
 
 #Create diagonal matrix
 diag0 = diag(10)
 dim(diag0)
 
-# Let us use the same seed as in the lecture
-set.seed(10111)
-
-# Generate xi (50 random points for class 1 and 50 random points for class 0)
+#Create mu vectors
 mu0 = rep(0, 10)
 length(mu0)
 mu0
 
-x0 = mvrnorm(50, mu = mu0, Sigma = diag0)
-dim(x0)
-
 mu1 = c(rep(1, 5), rep(0, 5))
+length(mu1)
 mu1
 
-x1 = mvrnorm(50, mu = mu1, Sigma = diag(10))
-dim(x1)
+# Let us use the same seed as in the lecture
+set.seed(10111)
 
-x_train = rbind(x0, x1)
-dim(x_train)
+# Define vector generating functions
+x0 <-function(n) {
+  mvrnorm(n, mu = mu0, Sigma = diag0)
+}
 
-#Make vector of 100 observations, with 50 1-s and 50 0-s
-y_train = as.factor(c(rep(0, 50), rep(1, 50)))
-class(y_train)
-y_train
-length(y_train)
+
+x1 <- function(n) {
+  mvrnorm(n, mu = mu1, Sigma = diag0)
+}
+
+
+y <- function(n) {
+  as.factor(c(rep(0, n), rep(1, n)))
+}
+
+
+logValue <- function(x) {
+  if (x > 0.5) 1 else 0
+}
+
+
+# Define the dimensionalities of the train and test data
+
+# Number of points of a given class (either of the class "0" or the class "1")
+n_tr_points = 50
+n_test_points = 1000
+n_simulations = 1000
+
+# Create error vectors
+error_vectorSvm1 <- c()
+error_vectorSvm2 <- c()
+error_vectorLog <- c()
+
+#-------------------------------------------------------------------------
+
+# Let us start with the training data
+
+
+# Generate x_i (n_tr_points random points for class "0" and n_tr_points random points for class "1")
+x0_train = x0(n_tr_points) # mvrnorm(n_tr_points, mu = mu0, Sigma = diag0)
+#dim(x0_train)
+# head(x0_train)
+
+x1_train = x1(n_tr_points) # mvrnorm(n_tr_points, mu = mu1, Sigma = diag0)
+# dim(x1_train)
+
+x_train = rbind(x0_train, x1_train)
+#dim(x_train)
+
+#Make vector of 2 * n_tr_points observations, with n_tr_points 0-s and n_tr_points 1-s
+y_train = y(n_tr_points)
+#class(y_train)
+#y_train
+#length(y_train)
 
 #Combine x and y variables to create the training data set
-train = data.frame(x_train, y = y_train)
-dim(train)
+train_data = data.frame(x_train, y = y_train)
+#dim(train_data)
 
-class(x)
+# Now create the test data with n_test_points observation points
+x0_test = x0(n_test_points)
+# head(x0_test)
+
+x1_test = x1(n_test_points)
+
+x_test = rbind(x0_test, x1_test)
+
+y_test = y(n_test_points)
+
+test_data = data.frame(x_test, y_test)
+
+#--------------------------------------------------------------------------
+# radial kernel
+
+#train the model with the default settings (the default kernel is a radial kernel)
+svmModel1 = svm(train_data$y~., data = train_data)
+# summary(svmModel)
+# svmModel
+
+svmPredicted1 = predict(svmModel1, newdata = test_data)
+errorRateSvm1 <- (sum(svmPredicted1 != test_data$y)) / length(test_data$y)
+# errorRateSvm1
+
+#save the error rate in the vector
+error_vectorSvm1 <- c(error_vectorSvm1, errorRateSvm1)
+
+#--------------------------------------------------------------------------
+# linear kernel
+
+#train the model with a linear kernel
+svmModel2 = svm(train_data$y~., data = train_data, kernel = "linear")
+
+svmPredicted2 = predict(svmModel2, newdata = test_data)
+errorRateSvm2 <- (sum(svmPredicted2 != test_data$y)) / length(test_data$y)
+# errorRateSvm2
+
+#save the error rate in the vector
+error_vectorSvm2 <- c(error_vectorSvm2, errorRateSvm2)
+
+#--------------------------------------------------------------------------
+# logistic regression
+logistic = glm(train_data$y~., data = train_data, family = "binomial")
+# summary(logistic)
+
+logPredicted <- predict(logistic, newdata = test_data, type = 'response')
+# head(logPredicted)
+
+logPredicted1 = lapply(logPredicted, FUN = logValue) 
+# head(logPredicted1)
+
+errorRateLog <-(sum(logPredicted1 != test_data$y)) / length(test_data$y)
+# errorRateLog
+
+# save the error rate in the vector
+error_vectorLog <- c(error_vectorLog, errorRateLog)
+
+#check the values in the error vector
+head(error_vectorSvm1)
+
+
+?mvrnorm
+
+?sample
+
+#class(x)
 ```
